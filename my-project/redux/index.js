@@ -1,1 +1,1 @@
-export { addScore } from './actions'
+export { addScore, resetScore } from './actions'
