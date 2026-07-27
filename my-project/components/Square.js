@@ -5,7 +5,6 @@ import { connect } from 'react-redux'
 
 const Square = (props) => {
     const [moleActive, setMoleActive] = useState(false)
-    const [isGameOver, setGameOver] = useState(false)
 
     const randomTime = Math.random() * 20000
     let timerId
@@ -20,7 +19,6 @@ const Square = (props) => {
 
     function endGame() {
         clearInterval(timerId)
-        setGameOver(true)
     }
 
     return (

@@ -1,11 +1,12 @@
 # Next Increments
 
 - **Sync Square's internal 60s timer with GameBoard's `timeLeft`.** Square.js runs its own
-  independent `setTimeout(endGame, 60 * 1000)` and sets a local `isGameOver` state that is
-  still never read after this change (it's set but has no effect on rendering). Since
-  GameBoard now remounts Square via the `key={round}` trick, both timers restart together,
-  but it would be cleaner to drive game-over purely from GameBoard's timer (e.g. pass
-  `isGameOver` down as a prop) and delete the redundant per-Square timer/state entirely.
+  independent `setTimeout(endGame, 60 * 1000)` whose only remaining effect is to
+  `clearInterval` its own mole timer (the dead `isGameOver` state it used to set was removed
+  in this change). Since GameBoard now remounts Square via the `key={round}` trick, both
+  timers restart together, but it would be cleaner to drive game-over purely from
+  GameBoard's timer (e.g. pass a `gameOver` prop down) and delete the redundant per-Square
+  timer entirely.
 
 - **Fix the `npm install` peer-dependency conflict.** The repo pins `react@18.2.0` but
   `react-redux@^7.2.1` only supports `react@^16.8.3` as a peer, so a plain `npm install`
