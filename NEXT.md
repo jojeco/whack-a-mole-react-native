@@ -1,0 +1,7 @@
+# Next up
+
+- **AsyncStorage persistence** for best score / best level across app restarts (not just this session). Blocked today because `my-project/node_modules` is committed straight to git with no `.gitignore` — adding `@react-native-async-storage/async-storage` needs that cleanup pass first, and note Expo 50 wants `async-storage` `~1.21.x`, not the npm-current `3.x`.
+- **Untrack `node_modules` from git.** It's 26k+ of the repo's ~26.3k tracked files with no `.gitignore` anywhere. This is the real blocker for adding any dependency (AsyncStorage above, react-redux v8, etc.) without an enormous, unreviewable diff.
+- **react-redux v7 → v8 bump is blocked** by a peer-dep conflict: v7 wants `react@^16.8.3`, and the installed React is newer. Needs the node_modules cleanup above plus a real dependency resolution pass, not a quick swap.
+- **Special mole types** (golden bonus mole worth extra points, bomb mole that penalizes on whack) — a natural extension of the level/scoring system added in this pass, and needs no new image assets (can reuse `mole.png` with a tint, or a solid-color overlay) if new art isn't available.
+- **Real test framework (Jest).** There's currently no test runner in the project; the reducer/scoring logic verification for this change was done with an ad-hoc Node + Babel harness run by hand. Jest (with `babel-jest` off the already-committed `babel-preset-expo`) would let that harness become real, repeatable, CI-able tests instead of a throwaway script.
