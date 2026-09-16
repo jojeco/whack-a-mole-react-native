@@ -9,6 +9,7 @@ const Hud = ({ score, timeLeft, levelName, streak, multiplier }) => {
             <Text style={styles.line}>You have {timeLeft} seconds left</Text>
             <Text style={styles.line}>{score} points</Text>
             <Text style={styles.line}>Combo: {streak} (x{multiplier})</Text>
+            <Text style={styles.line}>Gold = bonus · Red = bomb</Text>
         </View>
     )
 }

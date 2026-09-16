@@ -8,13 +8,16 @@ import { connect } from 'react-redux'
 import { startGame as startGameAction, tick as tickAction, whackMole as whackMoleAction, miss as missAction } from '../redux'
 import { getLevel } from '../game/levels'
 import { comboMultiplier } from '../game/scoring'
+import { pickMoleType } from '../game/moles'
 
 const HOLE_COUNT = 12
 
 const GameBoard = (props) => {
-  const { status, score, timeLeft, levelIndex, streak, bestCombo, bestScore, bestLevel, startGame, tick, whackMole, miss } = props
+  const { status, score, timeLeft, levelIndex, streak, bestCombo, bestScore, bestLevel, bombsHit, startGame, tick, whackMole, miss } = props
 
-  const [activeHoles, setActiveHoles] = useState(() => Array(HOLE_COUNT).fill(false))
+  // Array<null | 'normal' | 'golden' | 'bomb'>; null = empty hole. This is
+  // deliberately truthiness-compatible with the spawn code below.
+  const [activeHoles, setActiveHoles] = useState(() => Array(HOLE_COUNT).fill(null))
 
   const tickIntervalRef = useRef(null)
   const spawnIntervalRef = useRef(null)
@@ -65,7 +68,7 @@ const GameBoard = (props) => {
         spawnIntervalRef.current = null
       }
       clearAllMoleTimeouts()
-      setHoles(Array(HOLE_COUNT).fill(false))
+      setHoles(Array(HOLE_COUNT).fill(null))
       return undefined
     }
 
@@ -73,7 +76,7 @@ const GameBoard = (props) => {
 
     // Fresh level: no moles active yet, no stale timeouts.
     clearAllMoleTimeouts()
-    setHoles(Array(HOLE_COUNT).fill(false))
+    setHoles(Array(HOLE_COUNT).fill(null))
 
     const spawnMoles = () => {
       setHoles((prev) => {
@@ -91,11 +94,11 @@ const GameBoard = (props) => {
 
         const next = [...prev]
         toActivate.forEach((i) => {
-          next[i] = true
+          next[i] = pickMoleType(level)
           moleTimeoutsRef.current[i] = setTimeout(() => {
             setHoles((p) => {
               const n = [...p]
-              n[i] = false
+              n[i] = null
               return n
             })
             delete moleTimeoutsRef.current[i]
@@ -122,13 +125,20 @@ const GameBoard = (props) => {
         clearTimeout(moleTimeoutsRef.current[index])
         delete moleTimeoutsRef.current[index]
       }
+      // Read the live type from the ref, not the (possibly one-render-stale)
+      // `active` prop Square based its press decision on. If the mole
+      // already deactivated (timeout fired) since Square's last render,
+      // bail out without dispatching — otherwise a tap landing in that
+      // window would score on an already-emptied hole and extend the combo.
+      const moleType = activeHolesRef.current[index]
+      if (!moleType) return
       setHoles((prev) => {
         if (!prev[index]) return prev
         const next = [...prev]
-        next[index] = false
+        next[index] = null
         return next
       })
-      whackMole()
+      whackMole(moleType)
     },
     [whackMole, setHoles]
   )
@@ -161,11 +171,11 @@ const GameBoard = (props) => {
             multiplier={multiplier}
           />
           <View style={styles.game}>
-            {activeHoles.map((active, i) => (
+            {activeHoles.map((moleType, i) => (
               <Square
                 key={i}
                 index={i}
-                active={active}
+                moleType={moleType}
                 onWhack={() => handleWhack(i)}
                 onMiss={handleMiss}
               />
@@ -179,6 +189,7 @@ const GameBoard = (props) => {
           score={score}
           levelName={currentLevel.name}
           bestCombo={bestCombo}
+          bombsHit={bombsHit}
           sessionBestScore={bestScore}
           sessionBestLevelName={getLevel(bestLevel).name}
           onRestart={startGame}
@@ -217,6 +228,7 @@ const styles = StyleSheet.create({
       bestCombo: state.bestCombo,
       bestScore: state.bestScore,
       bestLevel: state.bestLevel,
+      bombsHit: state.bombsHit,
     }
   }
 

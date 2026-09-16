@@ -1,8 +1,12 @@
 // Pure scoring helpers — no React/React Native imports, safe to require()
 // from plain Node.
 
+import { MOLE_TYPES } from './moles'
+
 const BASE_POINTS = 10
 const MAX_MULTIPLIER = 4
+export const GOLDEN_POINTS = 50
+export const BOMB_PENALTY = 30
 
 // Combo multiplier grows by 1 for every 5 whacks in the current streak,
 // capped at MAX_MULTIPLIER (x4). streak=0-4 -> x1, streak=5-9 -> x2, etc.
@@ -18,5 +22,14 @@ export const comboMultiplier = (streak) => {
 // multiple of 5 (e.g. the 6th consecutive whack, where streak-before=5,
 // scores at x2).
 export const pointsForWhack = (streak) => BASE_POINTS * comboMultiplier(streak)
+
+// Type-aware scoring for a single whack. `streak` is the pre-whack streak,
+// same convention as pointsForWhack above. Bomb whacks are a flat penalty —
+// the combo multiplier does not amplify a penalty.
+export const pointsForMole = (moleType, streak) => {
+  if (moleType === MOLE_TYPES.GOLDEN) return GOLDEN_POINTS * comboMultiplier(streak)
+  if (moleType === MOLE_TYPES.BOMB) return -BOMB_PENALTY
+  return BASE_POINTS * comboMultiplier(streak)
+}
 
 export const didClearLevel = (score, level) => score >= level.targetScore

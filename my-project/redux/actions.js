@@ -12,9 +12,10 @@ export const tick = () => {
     }
 }
 
-export const whackMole = () => {
+export const whackMole = (moleType = 'normal') => {
     return {
-        type: WHACK_MOLE
+        type: WHACK_MOLE,
+        moleType,
     }
 }
 

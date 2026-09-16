@@ -2,10 +2,30 @@ import React from 'react'
 import { StyleSheet, TouchableOpacity, Image } from 'react-native'
 
 // Presentational / controlled: GameBoard owns all timers and state, and
-// tells each Square whether its mole is active via props.
-const Square = ({ active, onWhack, onMiss, index }) => {
+// tells each Square its mole's type ('normal' | 'golden' | 'bomb') or null
+// (empty hole) via props.
+const accessibilityLabelFor = (moleType, index) => {
+    switch (moleType) {
+        case 'golden':
+            return `Golden mole, hole ${index + 1}`
+        case 'bomb':
+            return `Bomb, hole ${index + 1}`
+        case 'normal':
+            return `Mole up, hole ${index + 1}`
+        default:
+            return `Empty hole ${index + 1}`
+    }
+}
+
+const colorStyleFor = (moleType) => {
+    if (moleType === 'golden') return styles.golden
+    if (moleType === 'bomb') return styles.bomb
+    return styles.normal
+}
+
+const Square = ({ moleType, onWhack, onMiss, index }) => {
     const handlePress = () => {
-        if (active) {
+        if (moleType) {
             onWhack()
         } else {
             onMiss()
@@ -16,11 +36,11 @@ const Square = ({ active, onWhack, onMiss, index }) => {
         <TouchableOpacity
             onPress={handlePress}
             accessibilityRole="button"
-            accessibilityLabel={active ? `Mole up, hole ${index + 1}` : `Empty hole ${index + 1}`}
+            accessibilityLabel={accessibilityLabelFor(moleType, index)}
         >
             <Image
-                source={active ? require('../assets/mole.png') : require('../assets/hole.png')}
-                style={active ? styles.mole : styles.square}
+                source={moleType ? require('../assets/mole.png') : require('../assets/hole.png')}
+                style={[styles.square, colorStyleFor(moleType)]}
             />
         </TouchableOpacity>
     )
@@ -32,16 +52,20 @@ const styles = StyleSheet.create({
         minWidth: 80,
         minHeight: 80,
         margin: 10,
-        backgroundColor: '#9BF89C',
-        width: '100%'
+        width: '100%',
     },
-    mole: {
-        flex: 1,
-        minWidth: 80,
-        minHeight: 80,
-        margin: 10,
+    normal: {
         backgroundColor: '#9BF89C',
-        width: '100%'
+    },
+    golden: {
+        backgroundColor: '#FFD54F',
+        borderWidth: 3,
+        borderColor: '#C8A415',
+    },
+    bomb: {
+        backgroundColor: '#E57373',
+        borderWidth: 3,
+        borderColor: '#B71C1C',
     },
 })
 

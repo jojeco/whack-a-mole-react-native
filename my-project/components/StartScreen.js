@@ -10,7 +10,9 @@ const StartScreen = ({ onStart, bestScore }) => {
                 Moles pop up in the holes below — tap them before they duck back
                 down. Clear each level's target score before time runs out to
                 advance to a faster, harder level. Chain whacks together without
-                missing to build a combo multiplier for bonus points.
+                missing to build a combo multiplier for bonus points. Watch for
+                gold moles for a big bonus, and don't whack the red bombs —
+                they cost you points and break your combo.
             </Text>
             <Text style={styles.best}>Best score this session: {bestScore}</Text>
             <TouchableOpacity style={styles.button} onPress={onStart} accessibilityRole="button" accessibilityLabel="Start Game">

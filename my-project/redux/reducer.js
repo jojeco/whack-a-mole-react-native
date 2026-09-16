@@ -1,6 +1,7 @@
 import { ADD_SCORE, START_GAME, TICK, WHACK_MOLE, MISS, END_GAME } from './actionTypes'
 import { LEVELS, getLevel } from '../game/levels'
-import { pointsForWhack, didClearLevel } from '../game/scoring'
+import { pointsForMole, didClearLevel, BOMB_PENALTY } from '../game/scoring'
+import { MOLE_TYPES } from '../game/moles'
 
 const initialState = {
     status: 'idle', // 'idle' | 'playing' | 'gameover'
@@ -13,6 +14,7 @@ const initialState = {
     bestLevel: 0,
     molesWhacked: 0,
     misses: 0,
+    bombsHit: 0,
 }
 
 const gameReducer = (state = initialState, action) => {
@@ -27,6 +29,7 @@ const gameReducer = (state = initialState, action) => {
                 timeLeft: LEVELS[0].durationSec,
                 molesWhacked: 0,
                 misses: 0,
+                bombsHit: 0,
                 // bestCombo tracks the best combo of the CURRENT run (shown next
                 // to "final score" / "level reached" on the game-over screen),
                 // so it resets each round. bestScore / bestLevel are session-wide
@@ -42,7 +45,21 @@ const gameReducer = (state = initialState, action) => {
             // bestScore already banked. Only count whacks while playing.
             if (state.status !== 'playing') return state
 
-            const gained = pointsForWhack(state.streak)
+            const moleType = action.moleType || MOLE_TYPES.NORMAL
+
+            if (moleType === MOLE_TYPES.BOMB) {
+                // A bomb breaks the combo and never drives score negative;
+                // it doesn't count towards molesWhacked (that stat is a
+                // count of "good" whacks).
+                return {
+                    ...state,
+                    score: Math.max(0, state.score - BOMB_PENALTY),
+                    streak: 0,
+                    bombsHit: state.bombsHit + 1,
+                }
+            }
+
+            const gained = pointsForMole(moleType, state.streak)
             const nextStreak = state.streak + 1
             return {
                 ...state,

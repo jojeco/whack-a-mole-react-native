@@ -10,6 +10,8 @@ export const LEVELS = [
     moleUpMs: 1100,
     maxSimultaneous: 1,
     targetScore: 50,
+    goldenChance: 0.10,
+    bombChance: 0.00,
   },
   {
     id: 2,
@@ -19,6 +21,8 @@ export const LEVELS = [
     moleUpMs: 900,
     maxSimultaneous: 2,
     targetScore: 120,
+    goldenChance: 0.10,
+    bombChance: 0.08,
   },
   {
     id: 3,
@@ -28,6 +32,8 @@ export const LEVELS = [
     moleUpMs: 750,
     maxSimultaneous: 2,
     targetScore: 220,
+    goldenChance: 0.10,
+    bombChance: 0.12,
   },
   {
     id: 4,
@@ -37,6 +43,8 @@ export const LEVELS = [
     moleUpMs: 600,
     maxSimultaneous: 3,
     targetScore: 340,
+    goldenChance: 0.08,
+    bombChance: 0.16,
   },
   {
     id: 5,
@@ -46,6 +54,8 @@ export const LEVELS = [
     moleUpMs: 500,
     maxSimultaneous: 4,
     targetScore: 480,
+    goldenChance: 0.08,
+    bombChance: 0.20,
   },
 ]
 

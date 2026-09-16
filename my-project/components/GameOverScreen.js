@@ -2,13 +2,14 @@ import React from 'react'
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 
 // Final-state screen: this run's stats plus session bests, and a restart button.
-const GameOverScreen = ({ score, levelName, bestCombo, sessionBestScore, sessionBestLevelName, onRestart }) => {
+const GameOverScreen = ({ score, levelName, bestCombo, bombsHit, sessionBestScore, sessionBestLevelName, onRestart }) => {
     return (
         <View style={styles.container}>
             <Text style={styles.title}>Game Over!</Text>
             <Text style={styles.line}>Final score: {score}</Text>
             <Text style={styles.line}>Level reached: {levelName}</Text>
             <Text style={styles.line}>Best combo: {bestCombo}</Text>
+            <Text style={styles.line}>Bombs hit: {bombsHit}</Text>
             <Text style={styles.line}>Session best score: {sessionBestScore}</Text>
             <Text style={styles.line}>Session best level: {sessionBestLevelName}</Text>
             <TouchableOpacity style={styles.button} onPress={onRestart} accessibilityRole="button" accessibilityLabel="Play Again">
