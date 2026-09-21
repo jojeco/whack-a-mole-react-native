@@ -1,7 +1,8 @@
-import { ADD_SCORE, START_GAME, TICK, WHACK_MOLE, MISS, END_GAME } from './actionTypes'
+import { ADD_SCORE, START_GAME, TICK, WHACK_MOLE, MISS, END_GAME, HYDRATE_PROGRESS, RESET_PROGRESS } from './actionTypes'
 import { LEVELS, getLevel } from '../game/levels'
 import { pointsForMole, didClearLevel, BOMB_PENALTY } from '../game/scoring'
 import { MOLE_TYPES } from '../game/moles'
+import { recordRun, selectPersistable, mergeHydrated } from '../game/persistence'
 
 const initialState = {
     status: 'idle', // 'idle' | 'playing' | 'gameover'
@@ -15,6 +16,37 @@ const initialState = {
     molesWhacked: 0,
     misses: 0,
     bombsHit: 0,
+    // Persisted progress (see game/persistence.js). `hydrated` flips to true
+    // once the saved copy has been read (or the read failed).
+    hydrated: false,
+    highScores: [],
+    lifetime: { runs: 0, molesWhacked: 0, misses: 0, bombsHit: 0, points: 0 },
+    lifetimeBestCombo: 0,
+}
+
+// The single place a finished run is recorded: playing -> gameover, bests
+// max-merged, lifetime counters bumped and the top-5 table updated. Callers
+// must have already checked state.status === 'playing'.
+const applyRunResult = (state) => {
+    const recorded = recordRun(selectPersistable(state), {
+        score: state.score,
+        levelIndex: state.levelIndex,
+        levelName: getLevel(state.levelIndex).name,
+        bestCombo: state.bestCombo,
+        molesWhacked: state.molesWhacked,
+        misses: state.misses,
+        bombsHit: state.bombsHit,
+        playedAt: Date.now(),
+    })
+    return {
+        ...state,
+        status: 'gameover',
+        bestScore: recorded.bestScore,
+        bestLevel: recorded.bestLevel,
+        lifetimeBestCombo: recorded.bestCombo,
+        highScores: recorded.highScores,
+        lifetime: recorded.lifetime,
+    }
 }
 
 const gameReducer = (state = initialState, action) => {
@@ -32,8 +64,10 @@ const gameReducer = (state = initialState, action) => {
                 bombsHit: 0,
                 // bestCombo tracks the best combo of the CURRENT run (shown next
                 // to "final score" / "level reached" on the game-over screen),
-                // so it resets each round. bestScore / bestLevel are session-wide
-                // records and are NEVER reset here.
+                // so it resets each round. bestScore / bestLevel are all-time
+                // records and highScores / lifetime / lifetimeBestCombo /
+                // hydrated are persisted progress; none of them are ever
+                // reset here.
                 bestCombo: 0,
             }
         }
@@ -109,20 +143,36 @@ const gameReducer = (state = initialState, action) => {
 
             // Either the run wasn't cleared, or there's no next level: game over.
             return {
-                ...state,
-                status: 'gameover',
+                ...applyRunResult(state),
                 timeLeft: 0,
-                bestScore: state.score > state.bestScore ? state.score : state.bestScore,
-                bestLevel: state.levelIndex > state.bestLevel ? state.levelIndex : state.bestLevel,
             }
         }
 
         case END_GAME: {
+            // Like TICK/WHACK_MOLE/MISS: only a run in progress can end, so a
+            // repeated or idle END_GAME can't record the same run twice.
+            if (state.status !== 'playing') return state
+
+            return applyRunResult(state)
+        }
+
+        case HYDRATE_PROGRESS: {
             return {
                 ...state,
-                status: 'gameover',
-                bestScore: state.score > state.bestScore ? state.score : state.bestScore,
-                bestLevel: state.levelIndex > state.bestLevel ? state.levelIndex : state.bestLevel,
+                ...mergeHydrated(state, action.progress),
+            }
+        }
+
+        case RESET_PROGRESS: {
+            // Wipes saved progress only; any in-flight run is left alone.
+            return {
+                ...state,
+                bestScore: 0,
+                bestLevel: 0,
+                lifetimeBestCombo: 0,
+                highScores: [],
+                lifetime: { runs: 0, molesWhacked: 0, misses: 0, bombsHit: 0, points: 0 },
+                hydrated: true,
             }
         }
 

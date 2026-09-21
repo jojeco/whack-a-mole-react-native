@@ -1,4 +1,4 @@
-import { ADD_SCORE, START_GAME, TICK, WHACK_MOLE, MISS, END_GAME } from './actionTypes'
+import { ADD_SCORE, START_GAME, TICK, WHACK_MOLE, MISS, END_GAME, HYDRATE_PROGRESS, RESET_PROGRESS } from './actionTypes'
 
 export const startGame = () => {
     return {
@@ -28,6 +28,19 @@ export const miss = () => {
 export const endGame = () => {
     return {
         type: END_GAME
+    }
+}
+
+export const hydrateProgress = (progress) => {
+    return {
+        type: HYDRATE_PROGRESS,
+        progress
+    }
+}
+
+export const resetProgress = () => {
+    return {
+        type: RESET_PROGRESS
     }
 }
 

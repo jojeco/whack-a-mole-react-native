@@ -5,7 +5,7 @@ import Hud from './Hud.js'
 import StartScreen from './StartScreen.js'
 import GameOverScreen from './GameOverScreen.js'
 import { connect } from 'react-redux'
-import { startGame as startGameAction, tick as tickAction, whackMole as whackMoleAction, miss as missAction } from '../redux'
+import { startGame as startGameAction, tick as tickAction, whackMole as whackMoleAction, miss as missAction, resetProgress as resetProgressAction } from '../redux'
 import { getLevel } from '../game/levels'
 import { comboMultiplier } from '../game/scoring'
 import { pickMoleType } from '../game/moles'
@@ -13,7 +13,7 @@ import { pickMoleType } from '../game/moles'
 const HOLE_COUNT = 12
 
 const GameBoard = (props) => {
-  const { status, score, timeLeft, levelIndex, streak, bestCombo, bestScore, bestLevel, bombsHit, startGame, tick, whackMole, miss } = props
+  const { status, score, timeLeft, levelIndex, streak, bestCombo, bestScore, bestLevel, bombsHit, highScores, lifetime, hydrated, startGame, tick, whackMole, miss, resetProgress } = props
 
   // Array<null | 'normal' | 'golden' | 'bomb'>; null = empty hole. This is
   // deliberately truthiness-compatible with the spawn code below.
@@ -158,7 +158,14 @@ const GameBoard = (props) => {
       <Text style={styles.header}>Ania's Whack-a-mole App!</Text>
 
       {status === 'idle' && (
-        <StartScreen onStart={startGame} bestScore={bestScore} />
+        <StartScreen
+          onStart={startGame}
+          bestScore={bestScore}
+          highScores={highScores}
+          lifetime={lifetime}
+          hydrated={hydrated}
+          onResetProgress={resetProgress}
+        />
       )}
 
       {status === 'playing' && (
@@ -192,6 +199,12 @@ const GameBoard = (props) => {
           bombsHit={bombsHit}
           sessionBestScore={bestScore}
           sessionBestLevelName={getLevel(bestLevel).name}
+          // The run's entry tops the table only if it beat every older one:
+          // insertHighScore ranks ties BELOW the entry already there, so a
+          // tied score sits at index 1 and is not a new best.
+          isNewHighScore={score > 0 && score === highScores[0]?.score && score > (highScores[1]?.score ?? 0)}
+          highScores={highScores}
+          lifetimeRuns={lifetime.runs}
           onRestart={startGame}
         />
       )}
@@ -229,6 +242,10 @@ const styles = StyleSheet.create({
       bestScore: state.bestScore,
       bestLevel: state.bestLevel,
       bombsHit: state.bombsHit,
+      highScores: state.highScores,
+      lifetime: state.lifetime,
+      hydrated: state.hydrated,
+      lifetimeBestCombo: state.lifetimeBestCombo,
     }
   }
 
@@ -237,6 +254,7 @@ const styles = StyleSheet.create({
     tick: tickAction,
     whackMole: whackMoleAction,
     miss: missAction,
+    resetProgress: resetProgressAction,
   }
 
 export default connect(mapStateToProps, mapDispatchToProps)(GameBoard)
