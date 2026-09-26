@@ -23,5 +23,8 @@
     "@babel/core": "^7.8.6",
     "babel-preset-expo": "^10.0.0"
   },
-  "private": true
+  "private": true,
+  "overrides": {
+    "image-size": "2.0.4"
+  }
 }
