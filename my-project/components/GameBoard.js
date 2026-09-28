@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { StyleSheet, Text, View, ImageBackground } from 'react-native'
+import { StyleSheet, Text, View, ImageBackground, AppState } from 'react-native'
 import Square from './Square.js'
 import Hud from './Hud.js'
 import StartScreen from './StartScreen.js'
@@ -18,6 +18,20 @@ const GameBoard = (props) => {
   // Array<null | 'normal' | 'golden' | 'bomb'>; null = empty hole. This is
   // deliberately truthiness-compatible with the spawn code below.
   const [activeHoles, setActiveHoles] = useState(() => Array(HOLE_COUNT).fill(null))
+  const [paused, setPaused] = useState(false)
+
+  // While the app is backgrounded (call, lock screen, app switch), stop the
+  // round clock and mole spawning rather than letting setInterval keep
+  // ticking unseen. The run itself stays alive — we never dispatch END_GAME
+  // here, we just gate the tick/spawn effects below.
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      setPaused(nextState !== 'active')
+    })
+    return () => {
+      subscription.remove()
+    }
+  }, [])
 
   const tickIntervalRef = useRef(null)
   const spawnIntervalRef = useRef(null)
@@ -44,7 +58,7 @@ const GameBoard = (props) => {
 
   // ONE interval dispatching TICK every 1000ms while playing.
   useEffect(() => {
-    if (status !== 'playing') return undefined
+    if (status !== 'playing' || paused) return undefined
 
     tickIntervalRef.current = setInterval(() => {
       tick()
@@ -56,7 +70,7 @@ const GameBoard = (props) => {
         tickIntervalRef.current = null
       }
     }
-  }, [status, tick])
+  }, [status, tick, paused])
 
   // ONE spawn controller running at the current level's spawnMs. Resets
   // whenever the level changes or status leaves 'playing'. Clears all
@@ -77,6 +91,11 @@ const GameBoard = (props) => {
     // Fresh level: no moles active yet, no stale timeouts.
     clearAllMoleTimeouts()
     setHoles(Array(HOLE_COUNT).fill(null))
+
+    // Backgrounded: board stays cleared above, but don't start spawning.
+    // Foregrounding reruns this effect (paused flips to false), which
+    // clears the board again and restarts spawning fresh.
+    if (paused) return undefined
 
     const spawnMoles = () => {
       setHoles((prev) => {
@@ -117,7 +136,7 @@ const GameBoard = (props) => {
       }
       clearAllMoleTimeouts()
     }
-  }, [status, levelIndex, clearAllMoleTimeouts, setHoles])
+  }, [status, levelIndex, clearAllMoleTimeouts, setHoles, paused])
 
   const handleWhack = useCallback(
     (index) => {
@@ -177,6 +196,7 @@ const GameBoard = (props) => {
             streak={streak}
             multiplier={multiplier}
           />
+          {paused && <Text style={styles.paused}>Paused</Text>}
           <View style={styles.game}>
             {activeHoles.map((moleType, i) => (
               <Square
@@ -228,6 +248,10 @@ const styles = StyleSheet.create({
       fontWeight: 'bold',
       marginBottom: 10,
       marginTop: 100
+    },
+    paused: {
+      fontWeight: 'bold',
+      marginTop: 10,
     }
   });
 
