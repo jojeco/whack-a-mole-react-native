@@ -1,4 +1,4 @@
-import { ADD_SCORE, START_GAME, TICK, WHACK_MOLE, MISS, END_GAME, HYDRATE_PROGRESS, RESET_PROGRESS } from './actionTypes'
+import { ADD_SCORE, START_GAME, TICK, WHACK_MOLE, MISS, END_GAME, HYDRATE_PROGRESS, RESET_PROGRESS, MOLE_ESCAPED } from './actionTypes'
 
 export const startGame = () => {
     return {
@@ -22,6 +22,13 @@ export const whackMole = (moleType = 'normal') => {
 export const miss = () => {
     return {
         type: MISS
+    }
+}
+
+export const moleEscaped = (moleType = 'normal') => {
+    return {
+        type: MOLE_ESCAPED,
+        moleType,
     }
 }
 

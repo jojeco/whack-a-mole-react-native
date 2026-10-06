@@ -1,4 +1,4 @@
-import { ADD_SCORE, START_GAME, TICK, WHACK_MOLE, MISS, END_GAME, HYDRATE_PROGRESS, RESET_PROGRESS } from './actionTypes'
+import { ADD_SCORE, START_GAME, TICK, WHACK_MOLE, MISS, END_GAME, HYDRATE_PROGRESS, RESET_PROGRESS, MOLE_ESCAPED } from './actionTypes'
 import { LEVELS, getLevel } from '../game/levels'
 import { pointsForMole, didClearLevel, BOMB_PENALTY } from '../game/scoring'
 import { MOLE_TYPES } from '../game/moles'
@@ -16,6 +16,7 @@ const initialState = {
     molesWhacked: 0,
     misses: 0,
     bombsHit: 0,
+    molesEscaped: 0,
     // Persisted progress (see game/persistence.js). `hydrated` flips to true
     // once the saved copy has been read (or the read failed).
     hydrated: false,
@@ -62,6 +63,7 @@ const gameReducer = (state = initialState, action) => {
                 molesWhacked: 0,
                 misses: 0,
                 bombsHit: 0,
+                molesEscaped: 0,
                 // bestCombo tracks the best combo of the CURRENT run (shown next
                 // to "final score" / "level reached" on the game-over screen),
                 // so it resets each round. bestScore / bestLevel are all-time
@@ -101,6 +103,21 @@ const gameReducer = (state = initialState, action) => {
                 streak: nextStreak,
                 molesWhacked: state.molesWhacked + 1,
                 bestCombo: nextStreak > state.bestCombo ? nextStreak : state.bestCombo,
+            }
+        }
+
+        case MOLE_ESCAPED: {
+            if (state.status !== 'playing') return state
+
+            // A bomb left alone is correct play — it must not break the
+            // combo. Only a normal/golden mole timing out unwhacked resets
+            // the streak; score is never touched here.
+            if (action.moleType === MOLE_TYPES.BOMB) return state
+
+            return {
+                ...state,
+                streak: 0,
+                molesEscaped: state.molesEscaped + 1,
             }
         }
 

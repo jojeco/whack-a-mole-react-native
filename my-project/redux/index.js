@@ -1,1 +1,1 @@
-export { addScore, startGame, tick, whackMole, miss, endGame, hydrateProgress, resetProgress } from './actions'
+export { addScore, startGame, tick, whackMole, miss, endGame, hydrateProgress, resetProgress, moleEscaped } from './actions'

@@ -12,7 +12,7 @@ import { LEVELS } from '../game/levels'
 import { MOLE_TYPES } from '../game/moles'
 import { BOMB_PENALTY } from '../game/scoring'
 import reducer from '../redux/reducer'
-import { startGame, tick, whackMole, miss, endGame, hydrateProgress, resetProgress } from '../redux/actions'
+import { startGame, tick, whackMole, miss, endGame, hydrateProgress, resetProgress, moleEscaped } from '../redux/actions'
 import store, { attachPersistence } from '../redux/store'
 
 const cases = []
@@ -192,6 +192,39 @@ test('END_GAME while playing records once', () => {
 test('bomb / miss paths still behave (game behaviour unchanged)', () => {
     const s = run(initial(), [startGame(), whackMole(MOLE_TYPES.NORMAL), whackMole(MOLE_TYPES.BOMB), miss()])
     assert(s.score === Math.max(0, 10 - BOMB_PENALTY) && s.bombsHit === 1 && s.misses === 1 && s.streak === 0)
+})
+test('a normal mole escaping resets streak and counts as an escape', () => {
+    const s = run(initial(), [startGame(), whackMole(MOLE_TYPES.NORMAL), whackMole(MOLE_TYPES.NORMAL), moleEscaped(MOLE_TYPES.NORMAL)])
+    assert(s.streak === 0 && s.molesEscaped === 1)
+})
+test('a golden mole escaping resets streak and counts as an escape', () => {
+    const s = run(initial(), [startGame(), whackMole(MOLE_TYPES.NORMAL), whackMole(MOLE_TYPES.NORMAL), moleEscaped(MOLE_TYPES.GOLDEN)])
+    assert(s.streak === 0 && s.molesEscaped === 1)
+})
+test('a bomb escaping (correctly ignored) changes nothing', () => {
+    const before = run(initial(), [startGame(), whackMole(MOLE_TYPES.NORMAL), whackMole(MOLE_TYPES.NORMAL)])
+    const after = reducer(before, moleEscaped(MOLE_TYPES.BOMB))
+    assert(after.streak === before.streak && after.molesEscaped === before.molesEscaped)
+})
+test('MOLE_ESCAPED while not playing is a no-op', () => {
+    const idle = initial()
+    assert(reducer(idle, moleEscaped(MOLE_TYPES.NORMAL)) === idle)
+    const over = playToGameover(reducer(initial(), hydrateProgress(defaultProgress())))
+    assert(reducer(over, moleEscaped(MOLE_TYPES.NORMAL)) === over)
+})
+test('START_GAME resets molesEscaped to 0', () => {
+    const escapedOnce = run(initial(), [startGame(), moleEscaped(MOLE_TYPES.NORMAL)])
+    assert(escapedOnce.molesEscaped === 1)
+    const restarted = reducer(escapedOnce, startGame())
+    assert(restarted.molesEscaped === 0)
+})
+test('MOLE_ESCAPED never touches score or lifetime/persisted stats', () => {
+    const before = run(initial(), [startGame(), whackMole(MOLE_TYPES.NORMAL)])
+    const after = reducer(before, moleEscaped(MOLE_TYPES.NORMAL))
+    assert(after.score === before.score)
+    eq(after.lifetime, before.lifetime)
+    eq(after.highScores, before.highScores)
+    assert(after.bestScore === before.bestScore && after.bestLevel === before.bestLevel)
 })
 test('HYDRATE after a finished run does not lower best or clobber the fresh table', () => {
     const over = withNow(7, () => playToGameover(initial(), 4)) // hydrate never happened yet

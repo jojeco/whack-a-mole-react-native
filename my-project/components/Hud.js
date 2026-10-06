@@ -2,14 +2,16 @@ import React from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 
 // Presentational in-play status bar. Purely driven by props from GameBoard.
-const Hud = ({ score, timeLeft, levelName, streak, multiplier }) => {
+const Hud = ({ score, timeLeft, levelName, streak, multiplier, escaped }) => {
     return (
         <View style={styles.hud}>
             <Text style={styles.line}>{levelName}</Text>
             <Text style={styles.line}>You have {timeLeft} seconds left</Text>
             <Text style={styles.line}>{score} points</Text>
             <Text style={styles.line}>Combo: {streak} (x{multiplier})</Text>
+            <Text style={styles.line}>Escaped: {escaped}</Text>
             <Text style={styles.line}>Gold = bonus · Red = bomb</Text>
+            <Text style={styles.line}>Missing a mole breaks your combo too</Text>
         </View>
     )
 }

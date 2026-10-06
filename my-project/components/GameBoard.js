@@ -5,7 +5,7 @@ import Hud from './Hud.js'
 import StartScreen from './StartScreen.js'
 import GameOverScreen from './GameOverScreen.js'
 import { connect } from 'react-redux'
-import { startGame as startGameAction, tick as tickAction, whackMole as whackMoleAction, miss as missAction, resetProgress as resetProgressAction } from '../redux'
+import { startGame as startGameAction, tick as tickAction, whackMole as whackMoleAction, miss as missAction, resetProgress as resetProgressAction, moleEscaped as moleEscapedAction } from '../redux'
 import { getLevel } from '../game/levels'
 import { comboMultiplier } from '../game/scoring'
 import { pickMoleType } from '../game/moles'
@@ -13,7 +13,7 @@ import { pickMoleType } from '../game/moles'
 const HOLE_COUNT = 12
 
 const GameBoard = (props) => {
-  const { status, score, timeLeft, levelIndex, streak, bestCombo, bestScore, bestLevel, bombsHit, highScores, lifetime, hydrated, startGame, tick, whackMole, miss, resetProgress } = props
+  const { status, score, timeLeft, levelIndex, streak, bestCombo, bestScore, bestLevel, bombsHit, molesEscaped, highScores, lifetime, hydrated, startGame, tick, whackMole, miss, resetProgress, moleEscaped } = props
 
   // Array<null | 'normal' | 'golden' | 'bomb'>; null = empty hole. This is
   // deliberately truthiness-compatible with the spawn code below.
@@ -115,12 +115,19 @@ const GameBoard = (props) => {
         toActivate.forEach((i) => {
           next[i] = pickMoleType(level)
           moleTimeoutsRef.current[i] = setTimeout(() => {
+            // Capture the mole's type before the hole is cleared below, so
+            // we know what escaped (and whether it was a bomb, which must
+            // not break the combo). handleWhack always clears this timeout
+            // before nulling the hole, so a mole can never be counted as
+            // both whacked and escaped.
+            const escapedType = activeHolesRef.current[i]
             setHoles((p) => {
               const n = [...p]
               n[i] = null
               return n
             })
             delete moleTimeoutsRef.current[i]
+            if (escapedType) moleEscaped(escapedType)
           }, level.moleUpMs)
         })
         return next
@@ -136,7 +143,7 @@ const GameBoard = (props) => {
       }
       clearAllMoleTimeouts()
     }
-  }, [status, levelIndex, clearAllMoleTimeouts, setHoles, paused])
+  }, [status, levelIndex, clearAllMoleTimeouts, setHoles, paused, moleEscaped])
 
   const handleWhack = useCallback(
     (index) => {
@@ -195,6 +202,7 @@ const GameBoard = (props) => {
             levelName={currentLevel.name}
             streak={streak}
             multiplier={multiplier}
+            escaped={molesEscaped}
           />
           {paused && <Text style={styles.paused}>Paused</Text>}
           <View style={styles.game}>
@@ -217,6 +225,7 @@ const GameBoard = (props) => {
           levelName={currentLevel.name}
           bestCombo={bestCombo}
           bombsHit={bombsHit}
+          molesEscaped={molesEscaped}
           sessionBestScore={bestScore}
           sessionBestLevelName={getLevel(bestLevel).name}
           // The run's entry tops the table only if it beat every older one:
@@ -266,6 +275,7 @@ const styles = StyleSheet.create({
       bestScore: state.bestScore,
       bestLevel: state.bestLevel,
       bombsHit: state.bombsHit,
+      molesEscaped: state.molesEscaped,
       highScores: state.highScores,
       lifetime: state.lifetime,
       hydrated: state.hydrated,
@@ -279,6 +289,7 @@ const styles = StyleSheet.create({
     whackMole: whackMoleAction,
     miss: missAction,
     resetProgress: resetProgressAction,
+    moleEscaped: moleEscapedAction,
   }
 
 export default connect(mapStateToProps, mapDispatchToProps)(GameBoard)
