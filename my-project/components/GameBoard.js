@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { StyleSheet, Text, View, ImageBackground, AppState } from 'react-native'
+import { StyleSheet, Text, TouchableOpacity, View, ImageBackground, AppState } from 'react-native'
 import Square from './Square.js'
 import Hud from './Hud.js'
 import StartScreen from './StartScreen.js'
 import GameOverScreen from './GameOverScreen.js'
 import { connect } from 'react-redux'
-import { startGame as startGameAction, tick as tickAction, whackMole as whackMoleAction, miss as missAction, resetProgress as resetProgressAction, moleEscaped as moleEscapedAction } from '../redux'
+import { startGame as startGameAction, tick as tickAction, whackMole as whackMoleAction, miss as missAction, resetProgress as resetProgressAction, moleEscaped as moleEscapedAction, endGame as endGameAction, returnToMenu as returnToMenuAction } from '../redux'
 import { getLevel } from '../game/levels'
 import { comboMultiplier } from '../game/scoring'
 import { pickMoleType } from '../game/moles'
@@ -13,12 +13,14 @@ import { pickMoleType } from '../game/moles'
 const HOLE_COUNT = 12
 
 const GameBoard = (props) => {
-  const { status, score, timeLeft, levelIndex, streak, bestCombo, bestScore, bestLevel, bombsHit, molesEscaped, highScores, lifetime, hydrated, startGame, tick, whackMole, miss, resetProgress, moleEscaped } = props
+  const { status, score, timeLeft, levelIndex, streak, bestCombo, bestScore, bestLevel, bombsHit, molesEscaped, highScores, lifetime, hydrated, startGame, tick, whackMole, miss, resetProgress, moleEscaped, endGame, returnToMenu } = props
 
   // Array<null | 'normal' | 'golden' | 'bomb'>; null = empty hole. This is
   // deliberately truthiness-compatible with the spawn code below.
   const [activeHoles, setActiveHoles] = useState(() => Array(HOLE_COUNT).fill(null))
-  const [paused, setPaused] = useState(false)
+  const [appPaused, setAppPaused] = useState(false)
+  const [userPaused, setUserPaused] = useState(false)
+  const paused = appPaused || userPaused
 
   // While the app is backgrounded (call, lock screen, app switch), stop the
   // round clock and mole spawning rather than letting setInterval keep
@@ -26,12 +28,18 @@ const GameBoard = (props) => {
   // here, we just gate the tick/spawn effects below.
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (nextState) => {
-      setPaused(nextState !== 'active')
+      setAppPaused(nextState !== 'active')
     })
     return () => {
       subscription.remove()
     }
   }, [])
+
+  // A new round should never start already paused, and a user-initiated
+  // pause from a previous round shouldn't leak into the next one.
+  useEffect(() => {
+    if (status !== 'playing') setUserPaused(false)
+  }, [status])
 
   const tickIntervalRef = useRef(null)
   const spawnIntervalRef = useRef(null)
@@ -147,6 +155,10 @@ const GameBoard = (props) => {
 
   const handleWhack = useCallback(
     (index) => {
+      // While paused the board is cleared (see the spawn effect above) but
+      // the holes are still rendered and tappable; a tap must not score,
+      // whack, or miss.
+      if (paused) return
       if (moleTimeoutsRef.current[index]) {
         clearTimeout(moleTimeoutsRef.current[index])
         delete moleTimeoutsRef.current[index]
@@ -166,12 +178,15 @@ const GameBoard = (props) => {
       })
       whackMole(moleType)
     },
-    [whackMole, setHoles]
+    [whackMole, setHoles, paused]
   )
 
   const handleMiss = useCallback(() => {
+    // A tap on an empty hole while paused (e.g. right after a user- or
+    // AppState-triggered pause) must not break the combo via MISS.
+    if (paused) return
     miss()
-  }, [miss])
+  }, [miss, paused])
 
   const currentLevel = getLevel(levelIndex)
   const multiplier = comboMultiplier(streak)
@@ -205,6 +220,24 @@ const GameBoard = (props) => {
             escaped={molesEscaped}
           />
           {paused && <Text style={styles.paused}>Paused</Text>}
+          <View style={styles.controls}>
+            <TouchableOpacity
+              style={styles.controlButton}
+              onPress={() => setUserPaused((p) => !p)}
+              accessibilityRole="button"
+              accessibilityLabel={userPaused ? 'Resume' : 'Pause'}
+            >
+              <Text style={styles.controlButtonText}>{userPaused ? 'Resume' : 'Pause'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.controlButton}
+              onPress={endGame}
+              accessibilityRole="button"
+              accessibilityLabel="End Run"
+            >
+              <Text style={styles.controlButtonText}>End Run</Text>
+            </TouchableOpacity>
+          </View>
           <View style={styles.game}>
             {activeHoles.map((moleType, i) => (
               <Square
@@ -235,6 +268,7 @@ const GameBoard = (props) => {
           highScores={highScores}
           lifetimeRuns={lifetime.runs}
           onRestart={startGame}
+          onMainMenu={returnToMenu}
         />
       )}
     </ImageBackground>
@@ -261,7 +295,22 @@ const styles = StyleSheet.create({
     paused: {
       fontWeight: 'bold',
       marginTop: 10,
-    }
+    },
+    controls: {
+      flexDirection: 'row',
+      marginTop: 10,
+    },
+    controlButton: {
+      backgroundColor: '#607D8B',
+      paddingVertical: 8,
+      paddingHorizontal: 16,
+      borderRadius: 8,
+      marginHorizontal: 6,
+    },
+    controlButtonText: {
+      color: '#fff',
+      fontWeight: 'bold',
+    },
   });
 
   const mapStateToProps = state => {
@@ -290,6 +339,8 @@ const styles = StyleSheet.create({
     miss: missAction,
     resetProgress: resetProgressAction,
     moleEscaped: moleEscapedAction,
+    endGame: endGameAction,
+    returnToMenu: returnToMenuAction,
   }
 
 export default connect(mapStateToProps, mapDispatchToProps)(GameBoard)

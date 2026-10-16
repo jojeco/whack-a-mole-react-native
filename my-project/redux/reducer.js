@@ -1,4 +1,4 @@
-import { ADD_SCORE, START_GAME, TICK, WHACK_MOLE, MISS, END_GAME, HYDRATE_PROGRESS, RESET_PROGRESS, MOLE_ESCAPED } from './actionTypes'
+import { ADD_SCORE, START_GAME, TICK, WHACK_MOLE, MISS, END_GAME, HYDRATE_PROGRESS, RESET_PROGRESS, MOLE_ESCAPED, RETURN_TO_MENU } from './actionTypes'
 import { LEVELS, getLevel } from '../game/levels'
 import { pointsForMole, didClearLevel, BOMB_PENALTY } from '../game/scoring'
 import { MOLE_TYPES } from '../game/moles'
@@ -171,6 +171,30 @@ const gameReducer = (state = initialState, action) => {
             if (state.status !== 'playing') return state
 
             return applyRunResult(state)
+        }
+
+        case RETURN_TO_MENU: {
+            // Only a finished run can return to the menu — this can't drop a
+            // live run without recording it (same guard shape as END_GAME).
+            if (state.status !== 'gameover') return state
+
+            return {
+                ...state,
+                status: 'idle',
+                // Reset per-run counters to their START_GAME values so a
+                // stale gameover's numbers don't flash on StartScreen.
+                // Persisted fields (bestScore, bestLevel, highScores,
+                // lifetime, lifetimeBestCombo, hydrated) are untouched.
+                score: 0,
+                streak: 0,
+                levelIndex: 0,
+                timeLeft: LEVELS[0].durationSec,
+                molesWhacked: 0,
+                misses: 0,
+                bombsHit: 0,
+                molesEscaped: 0,
+                bestCombo: 0,
+            }
         }
 
         case HYDRATE_PROGRESS: {

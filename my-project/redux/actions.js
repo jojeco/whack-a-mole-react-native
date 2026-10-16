@@ -1,4 +1,4 @@
-import { ADD_SCORE, START_GAME, TICK, WHACK_MOLE, MISS, END_GAME, HYDRATE_PROGRESS, RESET_PROGRESS, MOLE_ESCAPED } from './actionTypes'
+import { ADD_SCORE, START_GAME, TICK, WHACK_MOLE, MISS, END_GAME, HYDRATE_PROGRESS, RESET_PROGRESS, MOLE_ESCAPED, RETURN_TO_MENU } from './actionTypes'
 
 export const startGame = () => {
     return {
@@ -35,6 +35,12 @@ export const moleEscaped = (moleType = 'normal') => {
 export const endGame = () => {
     return {
         type: END_GAME
+    }
+}
+
+export const returnToMenu = () => {
+    return {
+        type: RETURN_TO_MENU
     }
 }
 

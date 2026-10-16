@@ -3,7 +3,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 
 // Final-state screen: this run's stats plus session bests, the top-5 table,
 // and a restart button.
-const GameOverScreen = ({ score, levelName, bestCombo, bombsHit, molesEscaped, sessionBestScore, sessionBestLevelName, isNewHighScore, highScores = [], lifetimeRuns, onRestart }) => {
+const GameOverScreen = ({ score, levelName, bestCombo, bombsHit, molesEscaped, sessionBestScore, sessionBestLevelName, isNewHighScore, highScores = [], lifetimeRuns, onRestart, onMainMenu }) => {
     return (
         <View style={styles.container}>
             <Text style={styles.title}>Game Over!</Text>
@@ -27,6 +27,11 @@ const GameOverScreen = ({ score, levelName, bestCombo, bombsHit, molesEscaped, s
             <TouchableOpacity style={styles.button} onPress={onRestart} accessibilityRole="button" accessibilityLabel="Play Again">
                 <Text style={styles.buttonText}>Play Again</Text>
             </TouchableOpacity>
+            {onMainMenu && (
+                <TouchableOpacity style={styles.secondaryButton} onPress={onMainMenu} accessibilityRole="button" accessibilityLabel="Main Menu">
+                    <Text style={styles.secondaryButtonText}>Main Menu</Text>
+                </TouchableOpacity>
+            )}
         </View>
     )
 }
@@ -73,6 +78,18 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontWeight: 'bold',
         fontSize: 16,
+    },
+    secondaryButton: {
+        backgroundColor: '#607D8B',
+        paddingVertical: 10,
+        paddingHorizontal: 24,
+        borderRadius: 8,
+        marginTop: 10,
+    },
+    secondaryButtonText: {
+        color: '#fff',
+        fontWeight: 'bold',
+        fontSize: 14,
     },
 })
 

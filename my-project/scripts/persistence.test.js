@@ -12,7 +12,7 @@ import { LEVELS } from '../game/levels'
 import { MOLE_TYPES } from '../game/moles'
 import { BOMB_PENALTY } from '../game/scoring'
 import reducer from '../redux/reducer'
-import { startGame, tick, whackMole, miss, endGame, hydrateProgress, resetProgress, moleEscaped } from '../redux/actions'
+import { startGame, tick, whackMole, miss, endGame, hydrateProgress, resetProgress, moleEscaped, returnToMenu } from '../redux/actions'
 import store, { attachPersistence } from '../redux/store'
 
 const cases = []
@@ -188,6 +188,30 @@ test('END_GAME while idle is a no-op', () => {
 test('END_GAME while playing records once', () => {
     const s = run(initial(), [startGame(), whackMole(MOLE_TYPES.NORMAL), endGame()])
     assert(s.status === 'gameover' && s.lifetime.runs === 1 && s.highScores.length === 1)
+})
+test('RETURN_TO_MENU from gameover goes to idle and leaves persisted fields untouched', () => {
+    const over = withNow(99, () => playToGameover(reducer(initial(), hydrateProgress(defaultProgress())), 3))
+    const s = reducer(over, returnToMenu())
+    assert(s.status === 'idle')
+    eq(s.highScores, over.highScores)
+    eq(s.lifetime, over.lifetime)
+    assert(s.bestScore === over.bestScore && s.bestLevel === over.bestLevel && s.lifetimeBestCombo === over.lifetimeBestCombo)
+    assert(s.hydrated === over.hydrated)
+})
+test('RETURN_TO_MENU while playing or idle is a no-op (same reference)', () => {
+    const idle = initial()
+    assert(reducer(idle, returnToMenu()) === idle)
+    const playing = reducer(idle, startGame())
+    assert(reducer(playing, returnToMenu()) === playing)
+})
+test('START_GAME after RETURN_TO_MENU works normally', () => {
+    const over = playToGameover(reducer(initial(), hydrateProgress(defaultProgress())), 3)
+    const menu = reducer(over, returnToMenu())
+    const restarted = reducer(menu, startGame())
+    assert(restarted.status === 'playing' && restarted.score === 0 && restarted.streak === 0)
+    eq(restarted.highScores, over.highScores)
+    eq(restarted.lifetime, over.lifetime)
+    assert(restarted.bestScore === over.bestScore)
 })
 test('bomb / miss paths still behave (game behaviour unchanged)', () => {
     const s = run(initial(), [startGame(), whackMole(MOLE_TYPES.NORMAL), whackMole(MOLE_TYPES.BOMB), miss()])
