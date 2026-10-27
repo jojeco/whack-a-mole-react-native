@@ -3,10 +3,19 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 
 // Final-state screen: this run's stats plus session bests, the top-5 table,
 // and a restart button.
-const GameOverScreen = ({ score, levelName, bestCombo, bombsHit, molesEscaped, sessionBestScore, sessionBestLevelName, isNewHighScore, highScores = [], lifetimeRuns, onRestart, onMainMenu }) => {
+const endReasonText = (endReason, { levelName, score, targetScore, levelCount }) => {
+    if (endReason === 'allCleared') return `All ${levelCount} levels cleared!`
+    if (endReason === 'targetMissed') return `Missed the ${levelName} target: ${score}/${targetScore}`
+    if (endReason === 'quit') return 'Run ended early'
+    return null
+}
+
+const GameOverScreen = ({ score, levelName, bestCombo, bombsHit, molesEscaped, sessionBestScore, sessionBestLevelName, isNewHighScore, highScores = [], lifetimeRuns, endReason, targetScore, levelCount, onRestart, onMainMenu }) => {
+    const reasonText = endReasonText(endReason, { levelName, score, targetScore, levelCount })
     return (
         <View style={styles.container}>
             <Text style={styles.title}>Game Over!</Text>
+            {reasonText && <Text style={styles.line}>{reasonText}</Text>}
             {isNewHighScore && <Text style={styles.newBest}>NEW BEST!</Text>}
             <Text style={styles.line}>Final score: {score}</Text>
             <Text style={styles.line}>Level reached: {levelName}</Text>

@@ -6,14 +6,14 @@ import StartScreen from './StartScreen.js'
 import GameOverScreen from './GameOverScreen.js'
 import { connect } from 'react-redux'
 import { startGame as startGameAction, tick as tickAction, whackMole as whackMoleAction, miss as missAction, resetProgress as resetProgressAction, moleEscaped as moleEscapedAction, endGame as endGameAction, returnToMenu as returnToMenuAction } from '../redux'
-import { getLevel } from '../game/levels'
+import { getLevel, LEVELS } from '../game/levels'
 import { comboMultiplier } from '../game/scoring'
 import { pickMoleType } from '../game/moles'
 
 const HOLE_COUNT = 12
 
 const GameBoard = (props) => {
-  const { status, score, timeLeft, levelIndex, streak, bestCombo, bestScore, bestLevel, bombsHit, molesEscaped, highScores, lifetime, hydrated, startGame, tick, whackMole, miss, resetProgress, moleEscaped, endGame, returnToMenu } = props
+  const { status, score, timeLeft, levelIndex, streak, bestCombo, bestScore, bestLevel, bombsHit, molesEscaped, highScores, lifetime, hydrated, endReason, startGame, tick, whackMole, miss, resetProgress, moleEscaped, endGame, returnToMenu } = props
 
   // Array<null | 'normal' | 'golden' | 'bomb'>; null = empty hole. This is
   // deliberately truthiness-compatible with the spawn code below.
@@ -40,6 +40,50 @@ const GameBoard = (props) => {
   useEffect(() => {
     if (status !== 'playing') setUserPaused(false)
   }, [status])
+
+  // Level-up banner: a short "Level N: Name!" message shown briefly whenever
+  // levelIndex advances mid-run. prevLevelIndexRef tracks the last levelIndex
+  // we've seen so an advance can be detected; it is also used to swallow the
+  // very first 'playing' render of a run (so Play Again never shows a stale
+  // banner from the level the previous run ended on).
+  const [levelUpText, setLevelUpText] = useState(null)
+  const prevLevelIndexRef = useRef(null)
+  const levelUpTimeoutRef = useRef(null)
+
+  useEffect(() => {
+    if (status === 'playing' && levelIndex === 0 && prevLevelIndexRef.current !== 0) {
+      // A new run just started (or this is the very first render): reset
+      // tracking and make sure no banner carries over.
+      prevLevelIndexRef.current = 0
+      setLevelUpText(null)
+    } else if (status === 'playing' && prevLevelIndexRef.current !== null && levelIndex > prevLevelIndexRef.current) {
+      const level = getLevel(levelIndex)
+      setLevelUpText(`Level ${levelIndex + 1}: ${level.name}!`)
+      prevLevelIndexRef.current = levelIndex
+    } else {
+      prevLevelIndexRef.current = levelIndex
+    }
+
+    return undefined
+  }, [status, levelIndex])
+
+  // Separate effect to (re)schedule the auto-clear whenever the banner text
+  // itself changes, so the timeout is always cleared on unmount and whenever
+  // the level changes again (which replaces levelUpText before this can fire
+  // stale) — no leaked timers.
+  useEffect(() => {
+    if (!levelUpText) return undefined
+    levelUpTimeoutRef.current = setTimeout(() => {
+      setLevelUpText(null)
+      levelUpTimeoutRef.current = null
+    }, 1500)
+    return () => {
+      if (levelUpTimeoutRef.current) {
+        clearTimeout(levelUpTimeoutRef.current)
+        levelUpTimeoutRef.current = null
+      }
+    }
+  }, [levelUpText])
 
   const tickIntervalRef = useRef(null)
   const spawnIntervalRef = useRef(null)
@@ -215,11 +259,19 @@ const GameBoard = (props) => {
             score={score}
             timeLeft={timeLeft}
             levelName={currentLevel.name}
+            levelNumber={levelIndex + 1}
+            levelCount={LEVELS.length}
+            targetScore={currentLevel.targetScore}
             streak={streak}
             multiplier={multiplier}
             escaped={molesEscaped}
           />
           {paused && <Text style={styles.paused}>Paused</Text>}
+          {levelUpText && (
+            <Text style={styles.levelUp} pointerEvents="none">
+              {levelUpText}
+            </Text>
+          )}
           <View style={styles.controls}>
             <TouchableOpacity
               style={styles.controlButton}
@@ -267,6 +319,9 @@ const GameBoard = (props) => {
           isNewHighScore={score > 0 && score === highScores[0]?.score && score > (highScores[1]?.score ?? 0)}
           highScores={highScores}
           lifetimeRuns={lifetime.runs}
+          endReason={endReason}
+          targetScore={currentLevel.targetScore}
+          levelCount={LEVELS.length}
           onRestart={startGame}
           onMainMenu={returnToMenu}
         />
@@ -293,6 +348,10 @@ const styles = StyleSheet.create({
       marginTop: 100
     },
     paused: {
+      fontWeight: 'bold',
+      marginTop: 10,
+    },
+    levelUp: {
       fontWeight: 'bold',
       marginTop: 10,
     },
@@ -329,6 +388,7 @@ const styles = StyleSheet.create({
       lifetime: state.lifetime,
       hydrated: state.hydrated,
       lifetimeBestCombo: state.lifetimeBestCombo,
+      endReason: state.endReason,
     }
   }
 

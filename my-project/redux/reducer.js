@@ -17,6 +17,10 @@ const initialState = {
     misses: 0,
     bombsHit: 0,
     molesEscaped: 0,
+    // Why the current/most-recent run ended: null | 'targetMissed' |
+    // 'allCleared' | 'quit'. Per-run only — never persisted (not part of
+    // selectPersistable's slice) and reset on every new run.
+    endReason: null,
     // Persisted progress (see game/persistence.js). `hydrated` flips to true
     // once the saved copy has been read (or the read failed).
     hydrated: false,
@@ -71,6 +75,7 @@ const gameReducer = (state = initialState, action) => {
                 // hydrated are persisted progress; none of them are ever
                 // reset here.
                 bestCombo: 0,
+                endReason: null,
             }
         }
 
@@ -162,6 +167,7 @@ const gameReducer = (state = initialState, action) => {
             return {
                 ...applyRunResult(state),
                 timeLeft: 0,
+                endReason: cleared ? 'allCleared' : 'targetMissed',
             }
         }
 
@@ -170,7 +176,10 @@ const gameReducer = (state = initialState, action) => {
             // repeated or idle END_GAME can't record the same run twice.
             if (state.status !== 'playing') return state
 
-            return applyRunResult(state)
+            return {
+                ...applyRunResult(state),
+                endReason: 'quit',
+            }
         }
 
         case RETURN_TO_MENU: {
@@ -194,6 +203,7 @@ const gameReducer = (state = initialState, action) => {
                 bombsHit: 0,
                 molesEscaped: 0,
                 bestCombo: 0,
+                endReason: null,
             }
         }
 

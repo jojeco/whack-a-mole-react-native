@@ -277,6 +277,49 @@ test('RESET_PROGRESS zeroes durables and leaves hydrated:true', () => {
     assert(s.hydrated === true && s.status === 'gameover' && s.score === over.score)
 })
 
+// ---- endReason ----
+test('endReason is null right after START_GAME', () => {
+    const s = reducer(initial(), startGame())
+    assert(s.endReason === null)
+})
+test("endReason is 'targetMissed' after the clock runs out under target", () => {
+    const s = playToGameover(initial(), 1) // 1 whack = 10 pts, well under Warm Up's 50 target
+    assert(s.status === 'gameover' && s.score < LEVELS[0].targetScore)
+    assert(s.endReason === 'targetMissed')
+})
+test("endReason is 'quit' after START_GAME then END_GAME", () => {
+    const s = run(initial(), [startGame(), endGame()])
+    assert(s.status === 'gameover' && s.endReason === 'quit')
+})
+test("endReason is 'allCleared' after clearing all 5 levels", () => {
+    let s = reducer(initial(), startGame())
+    LEVELS.forEach((level) => {
+        while (s.score < level.targetScore) {
+            s = reducer(s, whackMole(MOLE_TYPES.GOLDEN))
+        }
+        for (let i = 0; i < level.durationSec; i++) s = reducer(s, tick())
+    })
+    assert(s.status === 'gameover', 'run should be over after the last level')
+    assert(s.levelIndex === LEVELS.length - 1, 'should have reached the final level')
+    assert(s.endReason === 'allCleared')
+})
+test('endReason resets to null via RETURN_TO_MENU and via a fresh START_GAME', () => {
+    const quit = run(initial(), [startGame(), endGame()])
+    assert(quit.endReason === 'quit')
+    const menu = reducer(quit, returnToMenu())
+    assert(menu.endReason === null, 'RETURN_TO_MENU clears endReason')
+    const missed = playToGameover(initial(), 1)
+    assert(missed.endReason === 'targetMissed')
+    const restarted = reducer(missed, startGame())
+    assert(restarted.endReason === null, 'START_GAME clears endReason')
+})
+test('selectPersistable(state) never includes endReason', () => {
+    const s = run(initial(), [startGame(), endGame()])
+    assert(s.endReason === 'quit')
+    const persistable = selectPersistable(s)
+    assert(!('endReason' in persistable), 'endReason must never be persisted')
+})
+
 // ---- async facade ----
 test('loadProgress on empty storage -> defaults', async () => eq(await loadProgress(createFakeStorage()), defaultProgress()))
 test('loadProgress on corrupt string -> defaults', async () => {
