@@ -115,6 +115,17 @@ export const qualifiesForHighScores = (highScores, score) => {
     return value > list[list.length - 1].score
 }
 
+// 1-based position a new entry would land at if recorded now, or null if it
+// doesn't qualify. Same gate as qualifiesForHighScores/insertHighScore: ties
+// rank below older entries, a score of 0 never qualifies, and a tie against
+// a full table doesn't qualify either.
+export const highScoreRank = (highScores, score) => {
+    if (!qualifiesForHighScores(highScores, score)) return null
+    const value = sanitizeCount(score, 0)
+    const list = sanitizeHighScores(highScores)
+    return 1 + list.filter((entry) => entry.score >= value).length
+}
+
 // Folds one finished run into a progress object. Returns a NEW object; the
 // input is never mutated. runResult = { score, levelIndex, levelName,
 // bestCombo, molesWhacked, misses, bombsHit, playedAt }.

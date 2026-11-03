@@ -13,7 +13,7 @@ import { pickMoleType } from '../game/moles'
 const HOLE_COUNT = 12
 
 const GameBoard = (props) => {
-  const { status, score, timeLeft, levelIndex, streak, bestCombo, bestScore, bestLevel, bombsHit, molesEscaped, highScores, lifetime, hydrated, endReason, startGame, tick, whackMole, miss, resetProgress, moleEscaped, endGame, returnToMenu } = props
+  const { status, score, timeLeft, levelIndex, streak, bestCombo, bestScore, bestLevel, bombsHit, molesEscaped, highScores, lifetime, hydrated, endReason, highScoreRank, startGame, tick, whackMole, miss, resetProgress, moleEscaped, endGame, returnToMenu } = props
 
   // Array<null | 'normal' | 'golden' | 'bomb'>; null = empty hole. This is
   // deliberately truthiness-compatible with the spawn code below.
@@ -313,10 +313,8 @@ const GameBoard = (props) => {
           molesEscaped={molesEscaped}
           sessionBestScore={bestScore}
           sessionBestLevelName={getLevel(bestLevel).name}
-          // The run's entry tops the table only if it beat every older one:
-          // insertHighScore ranks ties BELOW the entry already there, so a
-          // tied score sits at index 1 and is not a new best.
-          isNewHighScore={score > 0 && score === highScores[0]?.score && score > (highScores[1]?.score ?? 0)}
+          isNewHighScore={highScoreRank === 1 && score > 0}
+          highScoreRank={highScoreRank}
           highScores={highScores}
           lifetimeRuns={lifetime.runs}
           endReason={endReason}
@@ -389,6 +387,7 @@ const styles = StyleSheet.create({
       hydrated: state.hydrated,
       lifetimeBestCombo: state.lifetimeBestCombo,
       endReason: state.endReason,
+      highScoreRank: state.highScoreRank,
     }
   }
 

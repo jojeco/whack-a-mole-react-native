@@ -2,7 +2,7 @@ import { ADD_SCORE, START_GAME, TICK, WHACK_MOLE, MISS, END_GAME, HYDRATE_PROGRE
 import { LEVELS, getLevel } from '../game/levels'
 import { pointsForMole, didClearLevel, BOMB_PENALTY } from '../game/scoring'
 import { MOLE_TYPES } from '../game/moles'
-import { recordRun, selectPersistable, mergeHydrated } from '../game/persistence'
+import { recordRun, selectPersistable, mergeHydrated, highScoreRank } from '../game/persistence'
 
 const initialState = {
     status: 'idle', // 'idle' | 'playing' | 'gameover'
@@ -21,6 +21,10 @@ const initialState = {
     // 'allCleared' | 'quit'. Per-run only — never persisted (not part of
     // selectPersistable's slice) and reset on every new run.
     endReason: null,
+    // Rank (1-based) the most-recent run landed at in the top-5 table, or
+    // null if it didn't place. Per-run only — never persisted (not part of
+    // selectPersistable's slice) and reset on every new run.
+    highScoreRank: null,
     // Persisted progress (see game/persistence.js). `hydrated` flips to true
     // once the saved copy has been read (or the read failed).
     hydrated: false,
@@ -33,6 +37,7 @@ const initialState = {
 // max-merged, lifetime counters bumped and the top-5 table updated. Callers
 // must have already checked state.status === 'playing'.
 const applyRunResult = (state) => {
+    const rank = highScoreRank(state.highScores, state.score)
     const recorded = recordRun(selectPersistable(state), {
         score: state.score,
         levelIndex: state.levelIndex,
@@ -51,6 +56,7 @@ const applyRunResult = (state) => {
         lifetimeBestCombo: recorded.bestCombo,
         highScores: recorded.highScores,
         lifetime: recorded.lifetime,
+        highScoreRank: rank,
     }
 }
 
@@ -76,6 +82,7 @@ const gameReducer = (state = initialState, action) => {
                 // reset here.
                 bestCombo: 0,
                 endReason: null,
+                highScoreRank: null,
             }
         }
 
@@ -204,6 +211,7 @@ const gameReducer = (state = initialState, action) => {
                 molesEscaped: 0,
                 bestCombo: 0,
                 endReason: null,
+                highScoreRank: null,
             }
         }
 

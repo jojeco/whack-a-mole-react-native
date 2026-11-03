@@ -10,13 +10,15 @@ const endReasonText = (endReason, { levelName, score, targetScore, levelCount })
     return null
 }
 
-const GameOverScreen = ({ score, levelName, bestCombo, bombsHit, molesEscaped, sessionBestScore, sessionBestLevelName, isNewHighScore, highScores = [], lifetimeRuns, endReason, targetScore, levelCount, onRestart, onMainMenu }) => {
+const GameOverScreen = ({ score, levelName, bestCombo, bombsHit, molesEscaped, sessionBestScore, sessionBestLevelName, isNewHighScore, highScoreRank, highScores = [], lifetimeRuns, endReason, targetScore, levelCount, onRestart, onMainMenu }) => {
     const reasonText = endReasonText(endReason, { levelName, score, targetScore, levelCount })
+    const showRankLine = typeof highScoreRank === 'number' && highScoreRank > 1
     return (
         <View style={styles.container}>
             <Text style={styles.title}>Game Over!</Text>
             {reasonText && <Text style={styles.line}>{reasonText}</Text>}
             {isNewHighScore && <Text style={styles.newBest}>NEW BEST!</Text>}
+            {showRankLine && <Text style={styles.rankLine}>#{highScoreRank} on the top scores!</Text>}
             <Text style={styles.line}>Final score: {score}</Text>
             <Text style={styles.line}>Level reached: {levelName}</Text>
             <Text style={styles.line}>Best combo: {bestCombo}</Text>
@@ -26,11 +28,18 @@ const GameOverScreen = ({ score, levelName, bestCombo, bombsHit, molesEscaped, s
             <Text style={styles.line}>Session best level: {sessionBestLevelName}</Text>
             <View style={styles.table}>
                 <Text style={styles.tableTitle}>Top scores</Text>
-                {highScores.map((entry, i) => (
-                    <Text key={i} style={styles.tableRow}>
-                        {i + 1}. {entry.score} pts · {entry.levelName} · combo {entry.combo}
-                    </Text>
-                ))}
+                {highScores.map((entry, i) => {
+                    const isYourRun = i === highScoreRank - 1
+                    return (
+                        <Text
+                            key={i}
+                            style={[styles.tableRow, isYourRun && styles.tableRowMine]}
+                            accessibilityLabel={isYourRun ? `${i + 1}. ${entry.score} points, your run` : undefined}
+                        >
+                            {i + 1}. {entry.score} pts · {entry.levelName} · combo {entry.combo}
+                        </Text>
+                    )
+                })}
             </View>
             {typeof lifetimeRuns === 'number' && <Text style={styles.line}>Runs played: {lifetimeRuns}</Text>}
             <TouchableOpacity style={styles.button} onPress={onRestart} accessibilityRole="button" accessibilityLabel="Play Again">
@@ -64,6 +73,12 @@ const styles = StyleSheet.create({
         fontSize: 18,
         marginBottom: 8,
     },
+    rankLine: {
+        color: '#2E7D32',
+        fontWeight: 'bold',
+        fontSize: 16,
+        marginBottom: 8,
+    },
     table: {
         alignItems: 'center',
         marginTop: 8,
@@ -75,6 +90,10 @@ const styles = StyleSheet.create({
     },
     tableRow: {
         marginBottom: 2,
+    },
+    tableRowMine: {
+        fontWeight: 'bold',
+        backgroundColor: '#FFF3E0',
     },
     button: {
         backgroundColor: '#4CAF50',

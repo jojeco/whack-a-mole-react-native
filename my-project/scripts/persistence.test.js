@@ -4,7 +4,7 @@
 import {
     STORAGE_KEY, SCHEMA_VERSION, MAX_HIGH_SCORES,
     defaultProgress, sanitizeCount, migrateProgress, serializeProgress, deserializeProgress,
-    insertHighScore, qualifiesForHighScores, recordRun,
+    insertHighScore, qualifiesForHighScores, recordRun, highScoreRank,
     selectPersistable, mergeHydrated, shouldPersist,
     loadProgress, saveProgress, clearProgress,
 } from '../game/persistence'
@@ -105,7 +105,7 @@ test('tie keeps the older entry ahead', () => {
     assert(!qualifiesForHighScores([], 0))
 })
 test('a tied score is not a NEW BEST', () => {
-    // Mirrors the isNewHighScore expression GameBoard passes to GameOverScreen:
+    // Mirrors GameBoard's former inline isNewHighScore expression (now highScoreRank === 1):
     // the run only tops the table when it beat every entry that was there
     // before, and insertHighScore ranks a tie below the older entry.
     const isNewBest = (list, score) => score > 0 && score === (list[0] && list[0].score) && score > ((list[1] && list[1].score) || 0)
@@ -119,6 +119,29 @@ test('insertHighScore does not mutate its input', () => {
     const list = Object.freeze([entry(10)])
     const out = insertHighScore(list, entry(20))
     assert(out !== list && list.length === 1)
+})
+
+// ---- highScoreRank ----
+test('highScoreRank: empty table -> 1', () => {
+    assert(highScoreRank([], 10) === 1)
+})
+test('highScoreRank: a score of 0 never qualifies', () => {
+    assert(highScoreRank([], 0) === null)
+})
+test('highScoreRank: [100, 50] with 75 -> 2', () => {
+    const list = [entry(100), entry(50)]
+    assert(highScoreRank(list, 75) === 2)
+})
+test('highScoreRank: a tie ranks below the older entry', () => {
+    assert(highScoreRank([entry(100)], 100) === 2)
+})
+test('highScoreRank: full table, score <= last entry -> null', () => {
+    const full = [50, 40, 30, 20, 10].map((s) => entry(s))
+    assert(highScoreRank(full, 10) === null)
+})
+test('highScoreRank: full table, score beats the last entry -> 5', () => {
+    const full = [50, 40, 30, 20, 10].map((s) => entry(s))
+    assert(highScoreRank(full, 11) === 5)
 })
 
 // ---- run recording ----
@@ -275,6 +298,43 @@ test('RESET_PROGRESS zeroes durables and leaves hydrated:true', () => {
     const d = selectPersistable(s)
     eq(d, { ...defaultProgress() })
     assert(s.hydrated === true && s.status === 'gameover' && s.score === over.score)
+})
+
+// ---- highScoreRank (reducer) ----
+test('a first run from initial state ranks 1st', () => {
+    const s = withNow(100, () => playToGameover(reducer(initial(), hydrateProgress(defaultProgress())), 4))
+    assert(s.highScoreRank === 1)
+    eq(s.highScores[s.highScoreRank - 1].score, s.score)
+})
+test('a second, lower run that still places ranks 2nd', () => {
+    let s = withNow(100, () => playToGameover(reducer(initial(), hydrateProgress(defaultProgress())), 4))
+    s = reducer(s, returnToMenu())
+    s = withNow(200, () => playToGameover(s, 3))
+    assert(s.highScoreRank === 2)
+    eq(s.highScores[s.highScoreRank - 1].score, s.score)
+    eq(s.highScores.map((e) => e.score), [40, 30])
+})
+test('highScoreRank resets to null via START_GAME and RETURN_TO_MENU', () => {
+    const over = withNow(1, () => playToGameover(reducer(initial(), hydrateProgress(defaultProgress())), 4))
+    assert(over.highScoreRank === 1)
+    const menu = reducer(over, returnToMenu())
+    assert(menu.highScoreRank === null)
+    const restarted = reducer(menu, startGame())
+    assert(restarted.highScoreRank === null)
+})
+test('END_GAME (quit) also sets highScoreRank', () => {
+    const s = run(initial(), [startGame(), whackMole(MOLE_TYPES.NORMAL), endGame()])
+    assert(s.endReason === 'quit' && s.highScoreRank === 1)
+    eq(s.highScores[s.highScoreRank - 1].score, s.score)
+})
+test('a zero-score quit never ranks', () => {
+    const s = run(initial(), [startGame(), endGame()])
+    assert(s.score === 0 && s.highScoreRank === null)
+})
+test('selectPersistable(state) never includes highScoreRank', () => {
+    const s = run(initial(), [startGame(), whackMole(MOLE_TYPES.NORMAL), endGame()])
+    const persistable = selectPersistable(s)
+    assert(!('highScoreRank' in persistable), 'highScoreRank must never be persisted')
 })
 
 // ---- endReason ----
