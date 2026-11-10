@@ -1,9 +1,28 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+
+const RESET_CONFIRM_MS = 3000
 
 // Idle-state screen: title, start button, best score, top-5 table, lifetime
 // stats, blurb, and a small reset-saved-progress control.
 const StartScreen = ({ onStart, bestScore, highScores = [], lifetime, hydrated, onResetProgress }) => {
+    const [confirmingReset, setConfirmingReset] = useState(false)
+
+    useEffect(() => {
+        if (!confirmingReset) return
+        const id = setTimeout(() => setConfirmingReset(false), RESET_CONFIRM_MS)
+        return () => clearTimeout(id)
+    }, [confirmingReset])
+
+    const handleResetPress = () => {
+        if (!confirmingReset) {
+            setConfirmingReset(true)
+            return
+        }
+        setConfirmingReset(false)
+        onResetProgress()
+    }
+
     return (
         <View style={styles.container}>
             <Text style={styles.title}>Ready to whack some moles?</Text>
@@ -39,12 +58,14 @@ const StartScreen = ({ onStart, bestScore, highScores = [], lifetime, hydrated, 
             </TouchableOpacity>
             <TouchableOpacity
                 style={[styles.resetButton, !hydrated && styles.resetButtonDisabled]}
-                onPress={onResetProgress}
+                onPress={handleResetPress}
                 disabled={!hydrated}
                 accessibilityRole="button"
-                accessibilityLabel="Reset saved progress"
+                accessibilityLabel={confirmingReset ? 'Confirm reset saved progress' : 'Reset saved progress'}
             >
-                <Text style={styles.resetText}>Reset progress</Text>
+                <Text style={[styles.resetText, confirmingReset && styles.resetTextConfirm]}>
+                    {confirmingReset ? 'Tap again to confirm reset' : 'Reset progress'}
+                </Text>
             </TouchableOpacity>
         </View>
     )
@@ -111,6 +132,9 @@ const styles = StyleSheet.create({
         color: '#888',
         fontSize: 12,
         textDecorationLine: 'underline',
+    },
+    resetTextConfirm: {
+        color: '#c62828',
     },
 })
 
