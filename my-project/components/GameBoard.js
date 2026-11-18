@@ -8,7 +8,7 @@ import { connect } from 'react-redux'
 import { startGame as startGameAction, tick as tickAction, whackMole as whackMoleAction, miss as missAction, resetProgress as resetProgressAction, moleEscaped as moleEscapedAction, endGame as endGameAction, returnToMenu as returnToMenuAction } from '../redux'
 import { getLevel, LEVELS } from '../game/levels'
 import { comboMultiplier } from '../game/scoring'
-import { pickMoleType } from '../game/moles'
+import { pickMoleType, pickSpawnHoles } from '../game/moles'
 
 const HOLE_COUNT = 12
 
@@ -151,17 +151,8 @@ const GameBoard = (props) => {
 
     const spawnMoles = () => {
       setHoles((prev) => {
-        const activeCount = prev.filter(Boolean).length
-        const slots = level.maxSimultaneous - activeCount
-        if (slots <= 0) return prev
-
-        const inactiveIndices = prev
-          .map((isActive, i) => (isActive ? null : i))
-          .filter((i) => i !== null)
-        if (inactiveIndices.length === 0) return prev
-
-        const shuffled = [...inactiveIndices].sort(() => Math.random() - 0.5)
-        const toActivate = shuffled.slice(0, Math.min(slots, shuffled.length))
+        const toActivate = pickSpawnHoles(prev, level.maxSimultaneous)
+        if (toActivate.length === 0) return prev
 
         const next = [...prev]
         toActivate.forEach((i) => {

@@ -18,3 +18,21 @@ export const pickMoleType = (level, rand = Math.random) => {
   if (roll < level.bombChance + level.goldenChance) return MOLE_TYPES.GOLDEN
   return MOLE_TYPES.NORMAL
 }
+
+// Picks which empty holes get a new mole this tick. `holes` mirrors the
+// active-hole check GameBoard uses elsewhere (truthy = occupied). Uses a
+// partial Fisher-Yates over the empty indices so the selection is unbiased,
+// unlike `array.sort(() => Math.random() - 0.5)`. `rand` is injectable for
+// deterministic unit tests, same convention as `pickMoleType`.
+export const pickSpawnHoles = (holes, maxSimultaneous, rand = Math.random) => {
+  const freeSlots = maxSimultaneous - holes.filter(Boolean).length
+  if (freeSlots <= 0) return []
+
+  const empty = holes.map((isActive, i) => (isActive ? null : i)).filter((i) => i !== null)
+  const count = Math.min(freeSlots, empty.length)
+  for (let i = 0; i < count; i++) {
+    const j = i + Math.floor(rand() * (empty.length - i))
+    ;[empty[i], empty[j]] = [empty[j], empty[i]]
+  }
+  return empty.slice(0, count)
+}

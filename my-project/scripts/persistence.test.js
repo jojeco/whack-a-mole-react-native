@@ -9,7 +9,7 @@ import {
     loadProgress, saveProgress, clearProgress,
 } from '../game/persistence'
 import { LEVELS } from '../game/levels'
-import { MOLE_TYPES } from '../game/moles'
+import { MOLE_TYPES, pickSpawnHoles } from '../game/moles'
 import { BOMB_PENALTY } from '../game/scoring'
 import reducer from '../redux/reducer'
 import { startGame, tick, whackMole, miss, endGame, hydrateProgress, resetProgress, moleEscaped, returnToMenu } from '../redux/actions'
@@ -432,6 +432,49 @@ test('attachPersistence writes only when durable state changes, and not on hydra
     store.dispatch(resetProgress())
     await flush()
     assert(writes === 2, 'unsubscribed')
+})
+
+test('pickSpawnHoles: fully-occupied board returns []', () => {
+    const holes = [MOLE_TYPES.NORMAL, MOLE_TYPES.BOMB, MOLE_TYPES.GOLDEN]
+    // maxSimultaneous > hole count, so freeSlots (2) is positive and the
+    // no-empty-holes path (not just the freeSlots<=0 guard) is exercised.
+    eq(pickSpawnHoles(holes, 5, () => 0.5), [])
+})
+
+test('pickSpawnHoles: already at maxSimultaneous returns [] even with empty holes', () => {
+    const holes = [MOLE_TYPES.NORMAL, null, null]
+    eq(pickSpawnHoles(holes, 1, () => 0.5), [])
+})
+
+test('pickSpawnHoles: never includes an occupied hole and has no duplicates', () => {
+    const holes = [MOLE_TYPES.NORMAL, null, null, MOLE_TYPES.BOMB, null]
+    const sequence = [0.9, 0.1, 0.4, 0.6, 0.2]
+    let i = 0
+    const picked = pickSpawnHoles(holes, 4, () => sequence[i++ % sequence.length])
+    assert(picked.every((i) => !holes[i]), 'picked an occupied hole')
+    assert(new Set(picked).size === picked.length, 'duplicate index picked')
+})
+
+test('pickSpawnHoles: returned length equals min(freeSlots, emptyCount)', () => {
+    const holes = [MOLE_TYPES.NORMAL, null, null, null, null]
+    const rand = () => 0.5
+    // freeSlots = 3 - 1 = 2, emptyCount = 4 -> expect 2
+    eq(pickSpawnHoles(holes, 3, rand).length, 2)
+    // freeSlots = 5 - 1 = 4, emptyCount = 4 -> expect 4
+    eq(pickSpawnHoles(holes, 5, rand).length, 4)
+})
+
+test('pickSpawnHoles: a fixed rand sequence is deterministic and reproducible', () => {
+    const holes = [null, null, null, null, null]
+    const sequence = [0.9, 0.1, 0.4, 0.6, 0.2]
+    const makeRand = () => {
+        let i = 0
+        return () => sequence[i++ % sequence.length]
+    }
+    const first = pickSpawnHoles(holes, 3, makeRand())
+    const second = pickSpawnHoles(holes, 3, makeRand())
+    eq(first, second)
+    eq(first, [4, 1, 3])
 })
 
 const main = async () => {
